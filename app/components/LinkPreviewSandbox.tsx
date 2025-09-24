@@ -101,7 +101,7 @@ export default function LinkPreviewSandbox() {
             key={previewUrl}
             src={previewUrl}
             title="Sandbox preview"
-            sandbox="allow-forms allow-scripts"
+            sandbox="allow-scripts allow-forms"
             referrerPolicy="no-referrer"
             className="h-[300px] w-full border-0 bg-white"
             onLoad={() => setIsLoading(false)}
