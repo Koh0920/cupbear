@@ -39,6 +39,7 @@ Thumbs.db
 .local/
 claudedoc/
 claudedocs/
+var/
 
 # Terraform (track lock, ignore state and working dir)
 **/.terraform/
