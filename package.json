@@ -5,7 +5,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "node ./scripts/run-lint.cjs"
   },
   "dependencies": {
     "@zip.js/zip.js": "^2.7.34",
