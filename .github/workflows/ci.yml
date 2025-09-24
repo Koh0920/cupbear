@@ -1,0 +1,178 @@
+name: CI Compliance
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  oas_lint:
+    name: Lint OpenAPI specification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Spectral lint
+        run: npx --yes @stoplight/spectral-cli@6.11.1 lint specs/API/openapi.yaml
+
+  audit_schema:
+    name: Validate audit schema
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Compile audit schema with Ajv
+        run: npx --yes ajv-cli@5.0.0 compile -s specs/AUDIT/audit_log_schema.json
+
+  contract_tests:
+    name: Contract testing (Schemathesis)
+    runs-on: ubuntu-latest
+    needs:
+      - oas_lint
+      - audit_schema
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Schemathesis
+        run: pip install --no-cache-dir schemathesis==3.26.2
+      - name: Contract conformance dry-run
+        run: schemathesis run specs/API/openapi.yaml --hypothesis-max-examples=5 --dry-run
+
+  playwright:
+    name: Playwright demo E2E
+    runs-on: ubuntu-latest
+    needs:
+      - contract_tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright test runner
+        run: npm install --no-save @playwright/test@1.49.1
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+      - name: Run Playwright tests
+        run: npx playwright test --config=playwright.config.ts specs/demo-web/tests/playwright
+
+  websocket_resilience:
+    name: k6 WebSocket SLO
+    runs-on: ubuntu-latest
+    needs:
+      - contract_tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install k6
+        uses: grafana/setup-k6@v1
+        with:
+          version: v0.49.0
+      - name: Run WebSocket soak test
+        run: |
+          k6 run --vus 10 --duration 10m --summary-export k6-ws-summary.json specs/demo-web/tests/k6/ws_soak_test.js
+      - name: Extract SLO metrics
+        run: |
+          node scripts/ci/report-ws-slo.mjs k6-ws-summary.json
+      - name: Upload raw k6 metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-ws-metrics
+          path: k6-ws-summary.json
+
+  supply_chain:
+    name: Supply chain policy
+    runs-on: ubuntu-latest
+    needs:
+      - playwright
+      - websocket_resilience
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install project dependencies
+        run: npm ci
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+          format: table
+          exit-code: '1'
+          vuln-type: os,library
+      - name: Hadolint
+        run: |
+          set -euo pipefail
+          files=$(git ls-files '*Dockerfile*')
+          if [ -z "$files" ]; then
+            echo "No Dockerfiles found; skipping Hadolint." >&2
+          else
+            for file in $files; do
+              echo "Linting $file"
+              docker run --rm -i hadolint/hadolint:2.12.0 < "$file"
+            done
+          fi
+      - name: Checkov IaC scan
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          quiet: true
+      - name: Build production bundle
+        run: npm run build
+      - name: Package build artifact
+        run: |
+          tar -czf build-artifact.tar.gz .next
+      - name: Generate CycloneDX SBOM
+        run: npx --yes @cyclonedx/cyclonedx-npm@1.11.1 --output-format json --output-file sbom.json
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.5.0
+      - name: Sign build artifact
+        env:
+          COSIGN_EXPERIMENTAL: '1'
+        run: cosign sign-blob --yes --keyless --output-signature build-artifact.tar.gz.sig build-artifact.tar.gz
+      - name: Derive artifact digest
+        run: sha256sum build-artifact.tar.gz > build-artifact.tar.gz.sha256
+      - name: Create provenance predicate
+        run: node scripts/ci/generate-provenance.mjs build-artifact.tar.gz.sha256 provenance.json
+      - name: Attest provenance
+        env:
+          COSIGN_EXPERIMENTAL: '1'
+        run: cosign attest --yes --keyless --predicate provenance.json --type https://slsa.dev/provenance/v1 build-artifact.tar.gz
+      - name: Upload supply-chain artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: supply-chain-artifacts
+          path: |
+            build-artifact.tar.gz
+            build-artifact.tar.gz.sig
+            build-artifact.tar.gz.sha256
+            provenance.json
+            sbom.json
+
+  pr_blocker:
+    name: Enforce policy gate
+    runs-on: ubuntu-latest
+    needs:
+      - supply_chain
+    if: always()
+    steps:
+      - name: Evaluate job results
+        run: |
+          if [[ "${{ needs.supply_chain.result }}" != "success" ]]; then
+            echo "Supply chain job failed; blocking merge." >&2
+            exit 1
+          fi
+          echo "All required jobs succeeded."
