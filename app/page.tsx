@@ -433,7 +433,7 @@ export default function Page() {
           <div className="mx-auto max-w-7xl px-4 py-16">
             <h2 className="text-3xl font-extrabold text-[var(--brand)]">Why teams rely on CupBear</h2>
             <p className="mt-3 text-base text-slate-600">
-              CupBear isn't just shiny security tech — it slides into everyday workflows as the dependable taste-tester for files.
+              CupBear isn&rsquo;t just shiny security tech — it slides into everyday workflows as the dependable taste-tester for files.
             </p>
             <div className="mt-10 grid gap-4 md:grid-cols-2">
               {reasonsToUse.map(({ icon: Icon, title, body }) => (
@@ -458,7 +458,7 @@ export default function Page() {
           <div className="mx-auto max-w-7xl px-4 py-16">
             <h2 className="text-3xl font-extrabold text-[var(--brand)]">How it plays out day-to-day</h2>
             <p className="mt-3 text-base text-slate-600">
-              Picture these cards in your own teams and you'll see where CupBear slots itself in.
+              Picture these cards in your own teams and you&rsquo;ll see where CupBear slots itself in.
             </p>
             <div className="mt-10 grid gap-4 md:grid-cols-3">
               {useCaseCards.map(({ icon: Icon, title, body }) => (
@@ -688,7 +688,7 @@ export default function Page() {
                 <div>
                   <div className="text-2xl font-extrabold text-[var(--brand)]">Pilot program: 2 slots left</div>
                   <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                    We're onboarding finance or CS teams willing to run CupBear in real workflows and share feedback. Drop us a line.
+                    We&rsquo;re onboarding finance or CS teams willing to run CupBear in real workflows and share feedback. Drop us a line.
                   </p>
                 </div>
                 <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
