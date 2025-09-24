@@ -1,0 +1,112 @@
+openapi: 3.1.0
+info:
+  title: CupBear Demo API
+  version: 0.1.0
+servers:
+  - url: https://api.cupbear.example
+paths:
+  /sessions:
+    post:
+      summary: Create demo session (one URL → one session)
+      operationId: createSession
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Idempotency key to de-duplicate POST (opaque string, ≤128 bytes)
+          schema: { type: string, maxLength: 128 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, turnstile_token]
+              properties:
+                url: { type: string, format: uri, description: "https only" }
+                email:
+                  type: string
+                  format: email
+                  description: "Optional; for inquiry follow-up"
+                turnstile_token:
+                  type: string
+                  description: "Cloudflare Turnstile response token (aka cf-turnstile-response)"
+                  x-field-alias: cf-turnstile-response
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateSessionResponse"
+        "400":
+          description: Validation error (unsupported mime / >25MB / non-https)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        "429":
+          description: Rate limited
+          headers:
+            Retry-After: { description: Seconds to wait before retrying, schema: { type: integer } }
+            RateLimit-Limit: { description: Total request-quota for this window, schema: { type: integer } }
+            RateLimit-Remaining: { description: Remaining requests in current window, schema: { type: integer } }
+            RateLimit-Reset: { description: Seconds until quota resets, schema: { type: integer } }
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        "503":
+          description: Service unavailable (backoff)
+          headers:
+            Retry-After: { description: Seconds to wait before retrying, schema: { type: integer } }
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /sessions/{id}:
+    get:
+      summary: Get session status
+      operationId: getSession
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "404":
+          description: Not found
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+components:
+  schemas:
+    Problem:
+      description: RFC 9457 Problem Details for HTTP APIs
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, format: uri }
+    CreateSessionResponse:
+      type: object
+      required: [session_id, embed_url, expires_in]
+      properties:
+        session_id: { type: string }
+        embed_url: { type: string, description: "Guacamole embed URL with one-time token" }
+        expires_in: { type: integer, description: "Seconds (default 120)" }
+    Session:
+      type: object
+      properties:
+        session_id: { type: string }
+        state: { type: string, enum: [pending, connecting, viewing, finished, failed] }
+        reason: { type: string, nullable: true }

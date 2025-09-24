@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CupBear Audit Log v0.1",
+  "type": "object",
+  "required": ["ts_iso", "session_id", "url_sha256", "result", "safe_copy", "actor"],
+  "properties": {
+    "ts_iso": { "type": "string", "format": "date-time" },
+    "session_id": { "type": "string" },
+    "actor": { "type": "string", "description": "email or 'anonymous'" },
+    "client_ip": { "type": "string" },
+    "asn": { "type": "integer" },
+    "url_sha256": { "type": "string", "minLength": 64, "maxLength": 64 },
+    "mime_detected": { "type": "string" },
+    "size_bytes": { "type": "integer" },
+    "result": { "type": "string", "enum": ["allowed", "blocked", "safe_copied"] },
+    "reason": { "type": "string", "nullable": true },
+    "safe_copy": {
+      "type": "object",
+      "required": ["bucket", "key", "etag", "checksum"],
+      "properties": {
+        "bucket": { "type": "string" },
+        "key": { "type": "string" },
+        "etag": { "type": "string" },
+        "checksum": {
+          "type": "object",
+          "required": ["algorithm", "value"],
+          "properties": {
+            "algorithm": { "type": "string", "enum": ["sha256", "crc32c", "crc64nvme", "sha1"] },
+            "value": { "type": "string" }
+          }
+        },
+        "expires_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "sig": {
+      "type": "object",
+      "description": "append-only chain integrity",
+      "required": ["hmac"],
+      "properties": {
+        "prev_hash": { "type": "string", "minLength": 64 },
+        "hmac": { "type": "string" }
+      }
+    },
+    "agent_version": { "type": "string" },
+    "dpi": { "type": "integer" },
+    "pages": { "type": "integer" },
+    "duration_ms": { "type": "integer" },
+    "worm": {
+      "type": "object",
+      "properties": {
+        "retention_until": { "type": "string", "format": "date-time" },
+        "legal_hold": { "type": "boolean" }
+      }
+    },
+    "version": { "type": "integer", "const": 1 }
+  }
+}

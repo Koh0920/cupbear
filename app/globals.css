@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html, body {
+  min-height: 100%;
+}
+
+body {
+  font-family: "Inter", "Noto Sans JP", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #F7FAFC;
+  color: #0F172A;
+}
+
+::selection {
+  background-color: #1DB95433;
+  color: inherit;
+}

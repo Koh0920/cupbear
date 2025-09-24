@@ -1,0 +1,61 @@
+# Node / Next.js
+node_modules/
+.npm/
+.pnpm-store/
+.next/
+out/
+dist/
+build/
+.turbo/
+.vercel/
+.eslintcache
+coverage/
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Playwright / E2E artifacts
+playwright-report/
+test-results/
+
+# Environment files (keep example tracked)
+.env
+.env.*
+!.env.example
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local scratch dirs
+.local/
+claudedoc/
+claudedocs/
+
+# Terraform (track lock, ignore state and working dir)
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+.terraform.tfstate*
+!.terraform.lock.hcl
+
+# Go
+bin/
+coverage.out
+
+# Proto generated code (if used)
+packages/proto/gen/
+
+# Docker overrides (optional local-only)
+docker-compose.override.yml
+*.local.yml
+

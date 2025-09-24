@@ -1,0 +1,32 @@
+{
+  "name": "cupbear-lp",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@zip.js/zip.js": "^2.7.34",
+    "dompurify": "^3.0.6",
+    "lucide-react": "0.402.0",
+    "mammoth": "^1.6.0",
+    "next": "^14.2.32",
+    "pdf-lib": "^1.17.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/node": "20.11.24",
+    "@types/react": "18.2.64",
+    "@types/react-dom": "18.2.21",
+    "autoprefixer": "10.4.16",
+    "eslint": "8.57.0",
+    "eslint-config-next": "14.2.3",
+    "postcss": "8.4.35",
+    "tailwindcss": "3.4.3",
+    "typescript": "5.4.5"
+  }
+}
