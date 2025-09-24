@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist-tests",
+    "module": "commonjs",
+    "target": "es2019",
+    "noEmit": false,
+    "moduleResolution": "node",
+    "allowJs": false,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "tests/**/*.ts",
+    "app/api/audit/**/*.ts"
+  ]
+}
