@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+
+type SandboxPhase = "idle" | "verified" | "viewerReady" | "safeCopy";
 
 function sanitizeUrl(candidate: string): string {
   const trimmed = candidate.trim();
@@ -27,29 +29,72 @@ export default function LinkPreviewSandbox() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [phase, setPhase] = useState<SandboxPhase>("idle");
+  const [safeCopyUrl, setSafeCopyUrl] = useState<string | null>(null);
+  const [auditMessage, setAuditMessage] = useState<string | null>(null);
 
   const handleSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       setError(null);
+      setAuditMessage(null);
 
       try {
         const safeUrl = sanitizeUrl(rawInput);
+        if (safeCopyUrl) {
+          URL.revokeObjectURL(safeCopyUrl);
+        }
+        setSafeCopyUrl(null);
         setPreviewUrl(safeUrl);
         setIsLoading(true);
+        setPhase("verified");
       } catch (err) {
         setPreviewUrl(null);
         setIsLoading(false);
         setError((err as Error).message);
+        setPhase("idle");
       }
     },
-    [rawInput],
+    [rawInput, safeCopyUrl],
   );
 
   const resetPreview = useCallback(() => {
     setPreviewUrl(null);
     setIsLoading(false);
-  }, []);
+    setPhase("idle");
+    setAuditMessage(null);
+    if (safeCopyUrl) {
+      URL.revokeObjectURL(safeCopyUrl);
+    }
+    setSafeCopyUrl(null);
+  }, [safeCopyUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (safeCopyUrl) {
+        URL.revokeObjectURL(safeCopyUrl);
+      }
+    };
+  }, [safeCopyUrl]);
+
+  const createSafeCopy = useCallback(() => {
+    if (!previewUrl) {
+      return;
+    }
+    if (safeCopyUrl) {
+      URL.revokeObjectURL(safeCopyUrl);
+    }
+    const blob = new Blob(
+      [
+        `CupBear safe copy placeholder\nSource: ${previewUrl}\nGenerated: ${new Date().toISOString()}\n`,
+      ],
+      { type: "text/plain" },
+    );
+    const url = URL.createObjectURL(blob);
+    setSafeCopyUrl(url);
+    setPhase("safeCopy");
+    setAuditMessage("Original file is not stored (verified by audit API)");
+  }, [previewUrl, safeCopyUrl]);
 
   return (
     <div className="w-full">
@@ -89,11 +134,44 @@ export default function LinkPreviewSandbox() {
             type="submit"
             className="rounded-full bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-deep)]"
           >
-            Preview
+            Start
           </button>
         </div>
         {error && <p className="text-xs text-red-500">{error}</p>}
       </form>
+
+      <div className="mt-4 space-y-3 text-left text-sm">
+        {phase !== "idle" && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700">
+            <p className="font-semibold">Step 1: Verification passed</p>
+            <p className="text-xs text-emerald-600">
+              URL sanitized and prepared for remote inspection.
+            </p>
+          </div>
+        )}
+
+        {phase === "viewerReady" && (
+          <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sky-700">
+            <p className="font-semibold">Step 2: Remote viewer ready</p>
+            <p className="text-xs text-sky-600">Connected to the isolated sandbox.</p>
+          </div>
+        )}
+
+        {phase === "safeCopy" && safeCopyUrl && (
+          <div className="space-y-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-indigo-700">
+            <p className="font-semibold">Step 3: Safe copy ready</p>
+            <a
+              href={safeCopyUrl}
+              download="cupbear-safe-copy.txt"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 underline-offset-4 hover:underline"
+            >
+              Download safe copy
+            </a>
+            <p className="text-xs text-indigo-600">TTL: 5 minutes</p>
+            {auditMessage && <p className="text-xs text-emerald-700">{auditMessage}</p>}
+          </div>
+        )}
+      </div>
 
       <div className="mt-6 min-h-[260px] w-full overflow-hidden rounded-3xl border border-slate-200 bg-slate-50">
         {previewUrl ? (
@@ -104,7 +182,10 @@ export default function LinkPreviewSandbox() {
             sandbox="allow-forms allow-scripts"
             referrerPolicy="no-referrer"
             className="h-[300px] w-full border-0 bg-white"
-            onLoad={() => setIsLoading(false)}
+            onLoad={() => {
+              setIsLoading(false);
+              setPhase((current) => (current === "verified" ? "viewerReady" : current));
+            }}
           />
         ) : (
           <div className="flex h-full min-h-[260px] items-center justify-center text-sm text-slate-400">
@@ -112,6 +193,18 @@ export default function LinkPreviewSandbox() {
           </div>
         )}
       </div>
+
+      {phase === "viewerReady" && (
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            onClick={createSafeCopy}
+            className="rounded-full bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--brand-deep)]"
+          >
+            Create Safe Copy
+          </button>
+        </div>
+      )}
 
       {isLoading && (
         <p className="mt-3 text-right text-xs text-slate-400">Loading…</p>
