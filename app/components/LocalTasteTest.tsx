@@ -1067,10 +1067,15 @@ async function buildSafeCopy() {
   }
 }
 
+type NavigatorWithStorage = Navigator & {
+  storage?: {
+    getDirectory?: () => Promise<FileSystemDirectoryHandle>;
+  };
+};
+
 async function persistToOpfs(blob: Blob) {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const storage = (navigator as any).storage;
+    const storage = (navigator as NavigatorWithStorage).storage;
     if (!storage?.getDirectory) {
       return false;
     }
